@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Mensaje de Bienvenida -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bienvenido, Usuario"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:tag="welcomeMessage" />
+
+    <!-- Botón de Seguimiento de Rutas -->
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Iniciar Seguimiento de Ruta"
+        android:tag="trackRouteButton"
+        android:layout_marginTop="16dp" />
+
+    <!-- Botón para Ver Historial de Rutas -->
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Historial de Rutas"
+        android:tag="historyButton"
+        android:layout_marginTop="16dp" />
+
+    <!-- Botón de Personalización del Mapa -->
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Personalizar Mapa"
+        android:tag="customizeMapButton"
+        android:layout_marginTop="16dp" />
+
+    <!-- Botón para Cerrar Sesión -->
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cerrar Sesión"
+        android:tag="logoutButton"
+        android:layout_marginTop="16dp" />
+</LinearLayout>

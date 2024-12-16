@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "78276035330",
+    "project_id": "appexamenfinal-bdc06",
+    "storage_bucket": "appexamenfinal-bdc06.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78276035330:android:ceab9f61292fa170ee781b",
+        "android_client_info": {
+          "package_name": "com.example.seguimientorutas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQGYniBfMbV0zkOzD-Ezq8t1uOPHy147w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
