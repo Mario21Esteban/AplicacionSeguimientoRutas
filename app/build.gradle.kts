@@ -35,11 +35,11 @@ android {
 dependencies {
 
     // Google Maps y Play Services
-    implementation (libs.play.services.maps)
-    implementation (libs.play.services.location)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
 
     // Material Design
-    implementation (libs.material.v1110)
+    implementation(libs.material.v1110)
 
     implementation(platform(libs.firebase.bom))
 

@@ -9,8 +9,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-
-
+    <permission
+        android:protectionLevel="signature"
+        android:name="com.example.seguimientorutas.permissionBroadcast"/>
 
     <application
         android:allowBackup="true"
@@ -22,11 +23,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SeguimientoRutas"
         tools:targetApi="31">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+
         <activity
             android:name=".MapActivity"
-            android:label="Seguimiento de Rutas"
-            android:configChanges="orientation|keyboardHidden|screenSize"
-            android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,12 +37,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <meta-data
-            android:name="com.google.android.gms.maps.API_KEY"
-            android:value="@string/google_maps_key" />
-
-
     </application>
 
 </manifest>

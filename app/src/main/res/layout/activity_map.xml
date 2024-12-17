@@ -10,36 +10,53 @@
         android:id="@+id/mapFragment"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_alignParentTop="true"
+        android:layout_above="@id/bottomBar"/>
 
-    <!-- Barra inferior de acciones -->
+    <!-- Barra inferior para botones -->
     <LinearLayout
+        android:id="@+id/bottomBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="80dp"
         android:orientation="horizontal"
-        android:background="@color/black"
-        android:padding="8dp"
+        android:gravity="center"
+        android:background="#60000000"
+        android:padding="10dp"
         android:layout_alignParentBottom="true"
-        android:gravity="center">
+        android:layout_marginBottom="16dp">
 
         <Button
-            android:layout_width="wrap_content"
+            android:id="@+id/startRouteButton"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Iniciar Ruta"
-            android:id="@+id/startRouteButton" />
+            android:textColor="#FFFFFF"
+            android:background="?android:attr/selectableItemBackground"
+            android:textSize="16sp" />
 
         <Button
-            android:layout_width="wrap_content"
+            android:id="@+id/historyButton"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Historial"
-            android:layout_marginStart="16dp"
-            android:id="@+id/historyButton" />
+            android:textColor="#FFFFFF"
+            android:background="?android:attr/selectableItemBackground"
+            android:textSize="16sp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"/>
 
         <Button
-            android:layout_width="wrap_content"
+            android:id="@+id/customizeButton"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Personalizar"
-            android:layout_marginStart="16dp"
-            android:id="@+id/customizeButton" />
+            android:textColor="#FFFFFF"
+            android:background="?android:attr/selectableItemBackground"
+            android:textSize="16sp" />
     </LinearLayout>
+
 </RelativeLayout>
