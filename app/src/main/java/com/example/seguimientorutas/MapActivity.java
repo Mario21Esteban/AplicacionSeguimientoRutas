@@ -3,10 +3,12 @@ package com.example.seguimientorutas;
 import android.Manifest;
 import android.app.PendingIntent;
 import android.content.pm.PackageManager;
+import android.icu.text.SimpleDateFormat;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -15,6 +17,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -34,6 +38,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
@@ -44,6 +53,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private float distanciaTotal = 0;          // Para calcular la distancia total
     private Location previousLocation = null;  // Última ubicación registrada
     private long startTime;                    // Tiempo de inicio de la ruta
+    private List<LocationData> currentRoutePoints = new ArrayList<>(); // Lista para acumular los puntos actuales
+
 
 
     @Override
@@ -78,6 +89,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Button historyButton = findViewById(R.id.historyButton);
         historyButton.setOnClickListener(v -> mostrarHistorialRutas());
 
+
         Button customizeButton = findViewById(R.id.customizeButton);
         customizeButton.setOnClickListener(v -> cambiarTipoMapa());
 
@@ -102,15 +114,41 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private void detenerRuta(Button startRouteButton) {
         isRecording = false;
         long endTime = System.currentTimeMillis(); // Guardar la hora de finalización
-        long duracionSegundos = (endTime - startTime) / 1000; // Calcular la duración en segundos
-        fusedLocationClient.removeLocationUpdates((PendingIntent) null); // Detener las actualizaciones de ubicación
-        startRouteButton.setText("Iniciar Ruta"); // Cambiar el texto del botón
+        long duracionSegundos = (endTime - startTime) / 1000; // Calcular la duración
 
-        // Mostrar resumen con distancia y duración
+        fusedLocationClient.removeLocationUpdates((PendingIntent) null);
+        startRouteButton.setText("Iniciar Ruta");
+
+        // Crear una lista de puntos acumulados
+        List<LocationData> routePoints = new ArrayList<>(currentRoutePoints); // Copiar puntos actuales
+        currentRoutePoints.clear(); // Limpiar la lista de puntos actuales después de guardar
+
+        // Obtener la fecha actual
+        String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+
+        // Crear el objeto Route con la fecha y puntos
+        String routeId = locationReference.push().getKey();
+        Route route = new Route(routeId, date, routePoints);
+
+        // Guardar la ruta en Firebase
+        locationReference.child(routeId).setValue(route)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Ruta guardada exitosamente", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error al guardar la ruta", Toast.LENGTH_SHORT).show();
+                });
+
+        // Mostrar resumen
         String resumen = "Distancia recorrida: " + String.format("%.2f", distanciaTotal / 1000) + " km\n" +
                 "Duración: " + duracionSegundos + " segundos";
         Toast.makeText(this, resumen, Toast.LENGTH_LONG).show();
     }
+
+
+
+
+
 
 
     // Obtener la ubicación continua y almacenarla en Firebase
@@ -136,13 +174,16 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         mapa.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
                         mapa.addMarker(new MarkerOptions().position(currentLatLng).title("Current Location"));
 
+                        // Añadir la ubicación a la lista de puntos
+                        currentRoutePoints.add(new LocationData(location.getLatitude(), location.getLongitude()));
+
                         // Calcular la distancia total
                         if (previousLocation != null) {
                             distanciaTotal += previousLocation.distanceTo(location);
                         }
                         previousLocation = location;
 
-                        // Almacenar la ubicación en Firebase
+                        // Guardar la ubicación en Firebase
                         LocationData locationData = new LocationData(location.getLatitude(), location.getLongitude());
                         locationReference.push().setValue(locationData);
                     }
@@ -163,14 +204,20 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     return;
                 }
 
+                // Recorre todas las rutas almacenadas en Firebase
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    LocationData locationData = snapshot.getValue(LocationData.class);
-                    if (locationData != null) {
-                        LatLng location = locationData.toLatLng(); // Convertir LocationData a LatLng
-                        polylineOptions.add(location);
+                    // Obtén el objeto Route que contiene los puntos y otros datos
+                    Route route = snapshot.getValue(Route.class);
+                    if (route != null && route.getPoints() != null) {
+                        // Añadir los puntos de la ruta a la polyline
+                        for (LocationData locationData : route.getPoints()) {
+                            LatLng location = locationData.toLatLng(); // Convertir LocationData a LatLng
+                            polylineOptions.add(location);
+                        }
                     }
                 }
 
+                // Si se han añadido puntos a la polyline, dibujarla en el mapa
                 if (polylineOptions.getPoints().isEmpty()) {
                     Toast.makeText(MapActivity.this, "No se encontraron ubicaciones en el historial.", Toast.LENGTH_SHORT).show();
                 } else {
@@ -186,6 +233,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
 
+
+    private void mostrarRutaSeleccionada(Route route) {
+        PolylineOptions polylineOptions = new PolylineOptions();
+        for (LocationData point : route.getPoints()) {
+            polylineOptions.add(new LatLng(point.getLatitude(), point.getLongitude()));
+        }
+        mapa.clear(); // Limpiar el mapa actual
+        mapa.addPolyline(polylineOptions); // Dibujar la ruta seleccionada
+
+        Toast.makeText(this, "Ruta seleccionada: " + route.getDate(), Toast.LENGTH_SHORT).show();
+    }
     // Verificar permisos de ubicación
     private void permisoUbicacion() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
