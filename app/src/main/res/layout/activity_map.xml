@@ -5,15 +5,6 @@
     android:layout_height="match_parent"
     tools:context=".MapActivity">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewHistorial"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_above="@id/bottomBar"
-        android:layout_margin="8dp"
-        android:visibility="gone"/> <!-- Se manejará la visibilidad en el código -->
-
-
     <!-- Fragmento para el mapa -->
     <fragment
         android:id="@+id/mapFragment"
@@ -22,8 +13,6 @@
         android:layout_height="0dp"
         android:layout_alignParentTop="true"
         android:layout_above="@id/bottomBar"/>
-
-
 
     <!-- Barra inferior para botones -->
     <LinearLayout
