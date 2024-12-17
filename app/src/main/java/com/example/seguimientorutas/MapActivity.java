@@ -11,6 +11,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -40,6 +41,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private FusedLocationProviderClient fusedLocationClient;
     private DatabaseReference locationReference;
     private boolean isRecording = false; // Estado de grabación de la ruta
+    private float distanciaTotal = 0;          // Para calcular la distancia total
+    private Location previousLocation = null;  // Última ubicación registrada
+    private long startTime;                    // Tiempo de inicio de la ruta
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,38 +77,54 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         // Botón para mostrar historial de rutas
         Button historyButton = findViewById(R.id.historyButton);
         historyButton.setOnClickListener(v -> mostrarHistorialRutas());
+
+        Button customizeButton = findViewById(R.id.customizeButton);
+        customizeButton.setOnClickListener(v -> cambiarTipoMapa());
+
+
+
     }
+
 
     // Iniciar la grabación de la ruta
     private void iniciarRuta(Button startRouteButton) {
         isRecording = true;
-        obtenerUbicacionContinua();
+        distanciaTotal = 0; // Reiniciar distancia
+        previousLocation = null; // Reiniciar la ubicación previa
+        startTime = System.currentTimeMillis(); // Guardar la hora de inicio
+        obtenerUbicacionContinua(); // Iniciar la captura de ubicación
         startRouteButton.setText("Detener Ruta"); // Cambiar el texto del botón
         Toast.makeText(this, "Ruta iniciada", Toast.LENGTH_SHORT).show();
     }
 
+
     // Detener la grabación de la ruta
     private void detenerRuta(Button startRouteButton) {
         isRecording = false;
-        fusedLocationClient.removeLocationUpdates((PendingIntent) null); // Detener actualizaciones de ubicación
+        long endTime = System.currentTimeMillis(); // Guardar la hora de finalización
+        long duracionSegundos = (endTime - startTime) / 1000; // Calcular la duración en segundos
+        fusedLocationClient.removeLocationUpdates((PendingIntent) null); // Detener las actualizaciones de ubicación
         startRouteButton.setText("Iniciar Ruta"); // Cambiar el texto del botón
-        Toast.makeText(this, "Ruta detenida", Toast.LENGTH_SHORT).show();
+
+        // Mostrar resumen con distancia y duración
+        String resumen = "Distancia recorrida: " + String.format("%.2f", distanciaTotal / 1000) + " km\n" +
+                "Duración: " + duracionSegundos + " segundos";
+        Toast.makeText(this, resumen, Toast.LENGTH_LONG).show();
     }
+
 
     // Obtener la ubicación continua y almacenarla en Firebase
     private void obtenerUbicacionContinua() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Si no se tienen los permisos, no continuar
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
-        // Crear un LocationRequest usando el constructor Builder
         LocationRequest locationRequest = new LocationRequest.Builder(10000)  // Intervalo de 10 segundos
-                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)  // Establecer la prioridad de precisión alta
-                .setMinUpdateIntervalMillis(5000)  // Establecer el intervalo más rápido a 5 segundos
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setMinUpdateIntervalMillis(5000)  // Intervalo más rápido de 5 segundos
                 .build();
 
-        // Solicitar actualizaciones de ubicación
         fusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
@@ -115,24 +136,20 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         mapa.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
                         mapa.addMarker(new MarkerOptions().position(currentLatLng).title("Current Location"));
 
-                        // Almacenar la ubicación como un objeto LocationData en Firebase
+                        // Calcular la distancia total
+                        if (previousLocation != null) {
+                            distanciaTotal += previousLocation.distanceTo(location);
+                        }
+                        previousLocation = location;
+
+                        // Almacenar la ubicación en Firebase
                         LocationData locationData = new LocationData(location.getLatitude(), location.getLongitude());
-                        locationReference.push().setValue(locationData)
-                                .addOnSuccessListener(aVoid -> {
-                                    // Si la ubicación se almacena con éxito, podemos mostrar un mensaje opcional
-                                    Log.d("Firebase", "Ubicación almacenada correctamente.");
-                                })
-                                .addOnFailureListener(e -> {
-                                    // Si falla el almacenamiento, muestra un mensaje de error
-                                    Log.e("Firebase", "Error al almacenar la ubicación: " + e.getMessage());
-                                    Toast.makeText(MapActivity.this, "Error al almacenar la ubicación", Toast.LENGTH_SHORT).show();
-                                });
+                        locationReference.push().setValue(locationData);
                     }
                 }
             }
         }, Looper.getMainLooper());
     }
-
 
 
     // Mostrar las rutas almacenadas en Firebase
@@ -192,6 +209,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mapa = googleMap;
@@ -205,4 +223,41 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         // Habilitar la ubicación en el mapa
         mapa.setMyLocationEnabled(true);
     }
+
+
+    private void cambiarTipoMapa() {
+        // Opciones de tipos de mapa
+        CharSequence[] tiposMapa = {"Normal", "Satelital", "Híbrido", "Terreno"};
+
+        // Crear un diálogo para que el usuario elija el tipo de mapa
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Selecciona el tipo de mapa");
+
+        builder.setItems(tiposMapa, (dialog, which) -> {
+            switch (which) {
+                case 0:
+                    mapa.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                    Toast.makeText(this, "Mapa Normal", Toast.LENGTH_SHORT).show();
+                    break;
+                case 1:
+                    mapa.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+                    Toast.makeText(this, "Mapa Satelital", Toast.LENGTH_SHORT).show();
+                    break;
+                case 2:
+                    mapa.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                    Toast.makeText(this, "Mapa Híbrido", Toast.LENGTH_SHORT).show();
+                    break;
+                case 3:
+                    mapa.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+                    Toast.makeText(this, "Mapa de Terreno", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        });
+
+        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+
+
 }
