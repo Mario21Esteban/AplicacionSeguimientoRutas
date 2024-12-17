@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -62,9 +63,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Button startRouteButton = findViewById(R.id.startRouteButton);
         startRouteButton.setOnClickListener(v -> {
             if (isRecording) {
-                detenerRuta();
+                detenerRuta(startRouteButton);  // Detener ruta y cambiar texto
             } else {
-                iniciarRuta();
+                iniciarRuta(startRouteButton);  // Iniciar ruta y cambiar texto
             }
         });
 
@@ -74,22 +75,25 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
     // Iniciar la grabación de la ruta
-    private void iniciarRuta() {
+    private void iniciarRuta(Button startRouteButton) {
         isRecording = true;
         obtenerUbicacionContinua();
+        startRouteButton.setText("Detener Ruta"); // Cambiar el texto del botón
         Toast.makeText(this, "Ruta iniciada", Toast.LENGTH_SHORT).show();
     }
 
     // Detener la grabación de la ruta
-    private void detenerRuta() {
+    private void detenerRuta(Button startRouteButton) {
         isRecording = false;
         fusedLocationClient.removeLocationUpdates((PendingIntent) null); // Detener actualizaciones de ubicación
+        startRouteButton.setText("Iniciar Ruta"); // Cambiar el texto del botón
         Toast.makeText(this, "Ruta detenida", Toast.LENGTH_SHORT).show();
     }
 
     // Obtener la ubicación continua y almacenarla en Firebase
     private void obtenerUbicacionContinua() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Si no se tienen los permisos, no continuar
             return;
         }
 
@@ -111,13 +115,25 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         mapa.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15));
                         mapa.addMarker(new MarkerOptions().position(currentLatLng).title("Current Location"));
 
-                        // Almacenar la ubicación en Firebase (sin ID de usuario, solo como una nueva entrada)
-                        locationReference.push().setValue(currentLatLng);
+                        // Almacenar la ubicación como un objeto LocationData en Firebase
+                        LocationData locationData = new LocationData(location.getLatitude(), location.getLongitude());
+                        locationReference.push().setValue(locationData)
+                                .addOnSuccessListener(aVoid -> {
+                                    // Si la ubicación se almacena con éxito, podemos mostrar un mensaje opcional
+                                    Log.d("Firebase", "Ubicación almacenada correctamente.");
+                                })
+                                .addOnFailureListener(e -> {
+                                    // Si falla el almacenamiento, muestra un mensaje de error
+                                    Log.e("Firebase", "Error al almacenar la ubicación: " + e.getMessage());
+                                    Toast.makeText(MapActivity.this, "Error al almacenar la ubicación", Toast.LENGTH_SHORT).show();
+                                });
                     }
                 }
             }
         }, Looper.getMainLooper());
     }
+
+
 
     // Mostrar las rutas almacenadas en Firebase
     private void mostrarHistorialRutas() {
@@ -125,21 +141,33 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 PolylineOptions polylineOptions = new PolylineOptions();
+                if (!dataSnapshot.exists()) {
+                    Toast.makeText(MapActivity.this, "No hay rutas guardadas.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    LatLng location = snapshot.getValue(LatLng.class);
-                    if (location != null) {
+                    LocationData locationData = snapshot.getValue(LocationData.class);
+                    if (locationData != null) {
+                        LatLng location = locationData.toLatLng(); // Convertir LocationData a LatLng
                         polylineOptions.add(location);
                     }
                 }
-                mapa.addPolyline(polylineOptions);
+
+                if (polylineOptions.getPoints().isEmpty()) {
+                    Toast.makeText(MapActivity.this, "No se encontraron ubicaciones en el historial.", Toast.LENGTH_SHORT).show();
+                } else {
+                    mapa.addPolyline(polylineOptions);
+                }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
-                Toast.makeText(MapActivity.this, "Error al cargar el historial de rutas.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MapActivity.this, "Error al cargar el historial de rutas: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
+
 
     // Verificar permisos de ubicación
     private void permisoUbicacion() {
@@ -149,6 +177,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             obtenerUbicacionContinua();
         }
     }
+
 
     // Manejo de los permisos de ubicación
     @Override
